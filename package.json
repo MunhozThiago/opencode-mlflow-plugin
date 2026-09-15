@@ -22,9 +22,6 @@
   ],
   "author": "MunhozThiago",
   "license": "MIT",
-  "dependencies": {
-    "mlflow": "^2.0.0"
-  },
   "devDependencies": {
     "@opencode-ai/plugin": "latest",
     "typescript": "^5.0.0"

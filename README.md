@@ -65,8 +65,7 @@ Configure the plugin in `opencode.json`:
     ["opencode-mlflow-plugin", {
       "trackingUri": "http://localhost:5000",
       "experimentName": "opencode-sessions",
-      "logToolDetails": false,
-      "logMessages": false
+      "logToolDetails": false
     }]
   ]
 }
@@ -77,7 +76,6 @@ Configure the plugin in `opencode.json`:
 | `trackingUri` | string | `http://localhost:5000` | MLflow tracking server URL |
 | `experimentName` | string | `opencode-sessions` | Name of the MLflow experiment |
 | `logToolDetails` | boolean | `false` | Log individual tool execution counts |
-| `logMessages` | boolean | `false` | Log chat message counts |
 
 ## What Gets Tracked
 
