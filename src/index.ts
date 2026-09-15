@@ -12,6 +12,7 @@ interface SessionData {
   toolCount: number;
   messageCount: number;
   errors: number;
+  toolTimings: Map<string, number>;
 }
 
 interface MlflowResponse {
@@ -155,6 +156,19 @@ const plugin: Plugin = async (input: PluginInput, options?: MlflowPluginOptions)
     );
   }
 
+  async function logTag(runId: string, key: string, value: string): Promise<void> {
+    await mlflowRequest(
+      opts.trackingUri,
+      "/runs/set-tag",
+      "POST",
+      {
+        run_id: runId,
+        key,
+        value,
+      }
+    );
+  }
+
   async function getOrCreateSession(sessionId: string): Promise<SessionData> {
     let session = sessions.get(sessionId);
     if (!session) {
@@ -165,6 +179,7 @@ const plugin: Plugin = async (input: PluginInput, options?: MlflowPluginOptions)
         toolCount: 0,
         messageCount: 0,
         errors: 0,
+        toolTimings: new Map(),
       };
       sessions.set(sessionId, session);
       await logParam(runId, "session_id", sessionId);
@@ -175,15 +190,32 @@ const plugin: Plugin = async (input: PluginInput, options?: MlflowPluginOptions)
   return {
     config: async () => {},
 
+    dispose: async () => {
+      for (const [sessionId, session] of sessions) {
+        await endRun(session.runId, "INTERRUPTED");
+        sessions.delete(sessionId);
+      }
+    },
+
     "chat.message": async (input) => {
       const session = await getOrCreateSession(input.sessionID);
       session.messageCount++;
       await logMetric(session.runId, "message_count", session.messageCount);
+
+      if (input.agent) {
+        await logTag(session.runId, "agent", input.agent);
+      }
+
+      if (input.model) {
+        await logTag(session.runId, "provider_id", input.model.providerID);
+        await logTag(session.runId, "model_id", input.model.modelID);
+      }
     },
 
     "tool.execute.before": async (input) => {
       const session = await getOrCreateSession(input.sessionID);
       session.toolCount++;
+      session.toolTimings.set(input.callID, Date.now());
       await logMetric(session.runId, "tool_count", session.toolCount);
 
       if (opts.logToolDetails) {
@@ -196,7 +228,14 @@ const plugin: Plugin = async (input: PluginInput, options?: MlflowPluginOptions)
       const session = sessions.get(input.sessionID);
       if (!session) return;
 
-      if (output.output && output.output.includes("error")) {
+      const startTime = session.toolTimings.get(input.callID);
+      if (startTime) {
+        const duration = Date.now() - startTime;
+        await logMetric(session.runId, `tool_${input.tool}_duration_ms`, duration);
+        session.toolTimings.delete(input.callID);
+      }
+
+      if (output.metadata?.error || (output.output && output.output.includes("Error"))) {
         session.errors++;
         await logMetric(session.runId, "error_count", session.errors);
       }
@@ -204,20 +243,21 @@ const plugin: Plugin = async (input: PluginInput, options?: MlflowPluginOptions)
 
     event: async (input) => {
       const evt = input.event as any;
-      if (evt.type === "session.end") {
-        const sessionId = evt.sessionID || evt.sessionId;
-        if (!sessionId) return;
+      const sessionId = evt.sessionID || evt.sessionId;
+      if (!sessionId) return;
 
-        const session = sessions.get(sessionId);
-        if (!session) return;
+      const session = sessions.get(sessionId);
+      if (!session) return;
 
+      if (evt.type === "session.end" || evt.type === "session.interrupt") {
         const duration = Date.now() - session.startTime;
         await logMetric(session.runId, "duration_ms", duration);
         await logMetric(session.runId, "final_tool_count", session.toolCount);
         await logMetric(session.runId, "final_message_count", session.messageCount);
         await logMetric(session.runId, "final_error_count", session.errors);
 
-        await endRun(session.runId, "FINISHED");
+        const status = evt.type === "session.interrupt" ? "INTERRUPTED" : "FINISHED";
+        await endRun(session.runId, status);
         sessions.delete(sessionId);
       }
     },
