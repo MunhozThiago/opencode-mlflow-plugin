@@ -1,36 +1,56 @@
 {
   "name": "opencode-mlflow-plugin",
-  "version": "0.1.0",
-  "description": "MLflow plugin for opencode - tracks sessions and tool executions",
+  "version": "1.0.0",
+  "description": "MLflow plugin for opencode - tracks sessions, tool executions, and metrics in your local MLflow server",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "opencode",
     "opencode-plugin",
     "mlflow",
     "experiment-tracking",
-    "ai"
+    "metrics",
+    "ai",
+    "machine-learning",
+    "tracking"
   ],
   "author": "MunhozThiago",
-  "license": "MIT",
+  "license": "AGPL-3.0",
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  },
   "devDependencies": {
     "@opencode-ai/plugin": "latest",
     "typescript": "^5.0.0"
   },
-  "peerDependencies": {
-    "@opencode-ai/plugin": ">=0.1.0"
+  "publishConfig": {
+    "access": "public"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/MunhozThiago/opencode-mlflow-plugin"
+  },
+  "opencode": {
+    "name": "MLflow Tracker",
+    "description": "Tracks opencode sessions and tool executions in MLflow",
+    "minVersion": "0.1.0"
   }
 }
