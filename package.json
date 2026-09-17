@@ -1,6 +1,6 @@
 {
   "name": "opencode-mlflow-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MLflow plugin for opencode - tracks sessions, tool executions, and metrics in your local MLflow server",
   "type": "module",
   "main": "dist/index.js",
